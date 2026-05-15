@@ -1,6 +1,6 @@
 'use client';
 
-import { Activity, LayoutDashboard, FileSpreadsheet, Users, Package } from 'lucide-react';
+import { Activity, LayoutDashboard, FileSpreadsheet, Users, Package, Calendar } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -9,6 +9,7 @@ export default function Sidebar() {
 
   const navItems = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+    { name: 'Jornadas', href: '/jornadas', icon: Calendar },
     { name: 'Reportes', href: '/reportes', icon: FileSpreadsheet },
     { name: 'Cajeros', href: '/cajeros', icon: Users },
     { name: 'Productos', href: '/productos', icon: Package },
