@@ -47,6 +47,11 @@ button {
   cursor: pointer;
 }
 
+select option {
+  background-color: #1e293b;
+  color: var(--text-primary);
+}
+
 /* Glassmorphism Classes */
 .glass-panel {
   background: var(--panel-bg);
