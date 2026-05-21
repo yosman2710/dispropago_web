@@ -188,3 +188,71 @@
 .backButton:hover {
   color: var(--primary);
 }
+
+/* Expandable sale rows */
+.saleRow {
+  transition: background 0.15s ease;
+}
+
+.saleRow:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.expandedRow td {
+  background: rgba(59, 130, 246, 0.04);
+  border-bottom: 2px solid var(--primary);
+}
+
+.itemsPanel {
+  padding: 1rem 1.5rem 1.25rem 3rem;
+  animation: slideDown 0.2s ease;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.itemsPanelHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--primary);
+  margin-bottom: 0.75rem;
+}
+
+.itemsTable {
+  width: 100%;
+  border-collapse: collapse;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.itemsTable th,
+.itemsTable td {
+  padding: 0.6rem 1rem;
+  font-size: 0.85rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.itemsTable th {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-secondary);
+  font-weight: 500;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.itemsTable tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.itemsTable tbody tr:hover {
+  background: rgba(255, 255, 255, 0.02);
+}

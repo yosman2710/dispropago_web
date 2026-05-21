@@ -20,7 +20,7 @@ export default function Dashboard() {
       setLoading(true);
       const { data, error } = await supabase
         .from('sales')
-        .select('*')
+        .select('*, sale_items(*)')
         .order('created_at', { ascending: false });
 
       if (error) throw error;

@@ -18,7 +18,7 @@ export default function ReportesPage() {
     try {
       setLoading(true);
       
-      let query = supabase.from('sales').select('*').order('created_at', { ascending: false });
+      let query = supabase.from('sales').select('*, sale_items(*)').order('created_at', { ascending: false });
 
       if (startDate) {
         query = query.gte('created_at', `${startDate}T00:00:00.000Z`);
