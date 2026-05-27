@@ -19,14 +19,14 @@ export default function Dashboard() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      
+
       const { data: jornadaData } = await supabase
         .from('jornadas')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(1)
         .single();
-        
+
       if (jornadaData) {
         setLatestJornada(jornadaData);
       }
@@ -45,30 +45,20 @@ export default function Dashboard() {
     }
   };
 
-  const handleExport = async () => {
-    setExporting(true);
-    try {
-      await exportSalesToExcel(sales);
-    } catch (error) {
-      console.error('Error exporting data: ', error);
-      alert('Hubo un error al exportar el archivo Excel.');
-    } finally {
-      setExporting(false);
-    }
-  };
+
 
   // Cálculos de KPI
   let currentSales = [];
-  
+
   if (latestJornada) {
-    currentSales = sales.filter(s => 
+    currentSales = sales.filter(s =>
       s.created_at >= latestJornada.start_at && s.created_at <= latestJornada.end_at
     );
   } else {
     const today = new Date().toISOString().split('T')[0];
     currentSales = sales.filter(s => s.created_at.startsWith(today));
   }
-  
+
   const totalUsdCurrent = currentSales.reduce((acc, curr) => acc + Number(curr.total_usd), 0);
   const totalBsCurrent = currentSales.reduce((acc, curr) => acc + Number(curr.total_bs), 0);
   const totalTransactions = currentSales.length;
@@ -81,14 +71,7 @@ export default function Dashboard() {
           <p style={{ color: 'var(--text-secondary)', marginTop: '0.25rem' }}>Visualiza y gestiona las transacciones de Dispropago.</p>
         </div>
 
-        <button 
-          onClick={handleExport} 
-          disabled={exporting || sales.length === 0} 
-          className="btn-primary"
-        >
-          <Download size={20} />
-          {exporting ? 'Generando Excel...' : 'Exportar Excel'}
-        </button>
+
       </header>
 
       {loading ? (
@@ -106,7 +89,7 @@ export default function Dashboard() {
             </div>
             <div className="stat-value">${totalUsdCurrent.toFixed(2)}</div>
           </div>
-          
+
           <div className="glass-panel stat-card">
             <div className="stat-header">
               <span>Ventas Bs {latestJornada ? '(Última Jornada)' : '(Hoy)'}</span>
