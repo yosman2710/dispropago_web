@@ -94,7 +94,7 @@ export default function ProductosPage() {
       setLoadingStats(true);
       const { data, error } = await supabase
         .from('sale_items')
-        .select('*');
+        .select('*, sales(rate)');
 
       if (error) throw error;
       setItems(data || []);
@@ -116,9 +116,23 @@ export default function ProductosPage() {
         timesSold: 0 
       };
     }
-    acc[name].totalWeight += Number(curr.weight_kg || 0);
-    acc[name].totalBs += Number(curr.total_bs || 0);
-    acc[name].totalUsd += (Number(curr.price_usd || 0) * Number(curr.weight_kg || 1)); 
+
+    const weight = Number(curr.weight_kg || 0);
+    const priceBs = Number(curr.price_usd || 0); // price_usd realmente guarda Bs
+    const itemTotalBs = Number(curr.total_bs || (priceBs * weight));
+
+    // Obtener la tasa de la venta asociada para la conversión
+    const rateVal = curr.sales
+      ? (Array.isArray(curr.sales)
+          ? Number(curr.sales[0]?.rate)
+          : Number(curr.sales.rate))
+      : 1;
+    const currentRate = rateVal || 1;
+    const itemTotalUsd = currentRate > 0 ? (itemTotalBs / currentRate) : 0;
+
+    acc[name].totalWeight += weight;
+    acc[name].totalBs += itemTotalBs;
+    acc[name].totalUsd += itemTotalUsd;
     acc[name].timesSold += 1;
     return acc;
   }, {});

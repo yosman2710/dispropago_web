@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 // CORRECCIÓN: Se importan ambas funciones para separar las responsabilidades de los botones
 import { exportSalesToExcel, exportProductTotalsToExcel } from '@/lib/exportExcel';
@@ -284,9 +284,8 @@ export default function JornadasPage() {
                 </thead>
                 <tbody>
                   {sales.map((sale) => (
-                    <>
+                    <React.Fragment key={sale.id}>
                       <tr
-                        key={sale.id}
                         onClick={() => setExpandedSaleId(expandedSaleId === sale.id ? null : sale.id)}
                         style={{ cursor: 'pointer' }}
                         className={styles.saleRow}
@@ -353,7 +352,7 @@ export default function JornadasPage() {
                           </td>
                         </tr>
                       )}
-                    </>
+                    </React.Fragment>
                   ))}
                 </tbody>
               </table>

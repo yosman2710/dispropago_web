@@ -19,6 +19,7 @@ export const exportSalesToExcel = async (sales: any[]) => {
     { header: 'Pagado Efectivo Bs', key: 'payment_cash_bs', width: 20 },
     { header: 'Pagado POS Bs', key: 'payment_pos_bs', width: 18 },
     { header: 'Pagado Transf. Bs', key: 'payment_transfer_bs', width: 20 },
+    { header: 'Descuento (%)', key: 'discount_percentage', width: 15 },
     { header: 'Cajero', key: 'cashier_name', width: 25 },
     { header: 'Estado', key: 'status', width: 12 },
   ];
@@ -45,13 +46,18 @@ export const exportSalesToExcel = async (sales: any[]) => {
       payment_cash_bs: sale.payment_cash_bs ? Number(sale.payment_cash_bs) : 0,
       payment_pos_bs: sale.payment_pos_bs ? Number(sale.payment_pos_bs) : 0,
       payment_transfer_bs: sale.payment_transfer_bs ? Number(sale.payment_transfer_bs) : 0,
+      discount_percentage: sale.discount_percentage ? Number(sale.discount_percentage) : 0,
       cashier_name: sale.cashier_name || 'Desconocido',
       status: sale.status || 'Completado',
     });
 
-    [4, 5, 6, 7, 8, 9, 10].forEach(colIndex => {
+    [4, 5, 6, 7, 8, 9, 10, 11].forEach(colIndex => {
       const cell = row.getCell(colIndex);
-      cell.numFmt = '#,##0.00';
+      if (colIndex === 11) {
+        cell.numFmt = '0.00"%"';
+      } else {
+        cell.numFmt = '#,##0.00';
+      }
       cell.alignment = { horizontal: 'right' };
     });
   });

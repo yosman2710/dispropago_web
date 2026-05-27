@@ -1,6 +1,6 @@
 'use client';
 
-import { Activity, LayoutDashboard, FileSpreadsheet, Users, Package, Calendar } from 'lucide-react';
+import { Activity, LayoutDashboard, FileSpreadsheet, Users, Package, Calendar, Settings } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -13,6 +13,7 @@ export default function Sidebar() {
     { name: 'Reportes', href: '/reportes', icon: FileSpreadsheet },
     { name: 'Cajeros', href: '/cajeros', icon: Users },
     { name: 'Productos', href: '/productos', icon: Package },
+    { name: 'Configuración', href: '/configuracion', icon: Settings },
   ];
 
   return (

@@ -8,25 +8,38 @@ import { Download, DollarSign, CreditCard, TrendingUp, Users } from 'lucide-reac
 
 export default function Dashboard() {
   const [sales, setSales] = useState<any[]>([]);
+  const [latestJornada, setLatestJornada] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
-    fetchSales();
+    fetchData();
   }, []);
 
-  const fetchSales = async () => {
+  const fetchData = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      
+      const { data: jornadaData } = await supabase
+        .from('jornadas')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+        
+      if (jornadaData) {
+        setLatestJornada(jornadaData);
+      }
+
+      const { data: salesData, error } = await supabase
         .from('sales')
         .select('*, sale_items(*)')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setSales(data || []);
+      setSales(salesData || []);
     } catch (error) {
-      console.error('Error fetching sales:', error);
+      console.error('Error fetching data:', error);
     } finally {
       setLoading(false);
     }
@@ -45,12 +58,20 @@ export default function Dashboard() {
   };
 
   // Cálculos de KPI
-  const today = new Date().toISOString().split('T')[0];
-  const todaySales = sales.filter(s => s.created_at.startsWith(today));
+  let currentSales = [];
   
-  const totalUsdToday = todaySales.reduce((acc, curr) => acc + Number(curr.total_usd), 0);
-  const totalBsToday = todaySales.reduce((acc, curr) => acc + Number(curr.total_bs), 0);
-  const totalTransactions = todaySales.length;
+  if (latestJornada) {
+    currentSales = sales.filter(s => 
+      s.created_at >= latestJornada.start_at && s.created_at <= latestJornada.end_at
+    );
+  } else {
+    const today = new Date().toISOString().split('T')[0];
+    currentSales = sales.filter(s => s.created_at.startsWith(today));
+  }
+  
+  const totalUsdCurrent = currentSales.reduce((acc, curr) => acc + Number(curr.total_usd), 0);
+  const totalBsCurrent = currentSales.reduce((acc, curr) => acc + Number(curr.total_bs), 0);
+  const totalTransactions = currentSales.length;
 
   return (
     <div className="fade-in">
@@ -80,23 +101,23 @@ export default function Dashboard() {
         <section className="stats-grid">
           <div className="glass-panel stat-card">
             <div className="stat-header">
-              <span>Ventas USD (Hoy)</span>
+              <span>Ventas USD {latestJornada ? '(Última Jornada)' : '(Hoy)'}</span>
               <DollarSign className="stat-icon" size={38} />
             </div>
-            <div className="stat-value">${totalUsdToday.toFixed(2)}</div>
+            <div className="stat-value">${totalUsdCurrent.toFixed(2)}</div>
           </div>
           
           <div className="glass-panel stat-card">
             <div className="stat-header">
-              <span>Ventas Bs (Hoy)</span>
+              <span>Ventas Bs {latestJornada ? '(Última Jornada)' : '(Hoy)'}</span>
               <DollarSign className="stat-icon" size={38} style={{ color: 'var(--accent)', background: 'rgba(16, 185, 129, 0.1)' }} />
             </div>
-            <div className="stat-value">Bs {totalBsToday.toFixed(2)}</div>
+            <div className="stat-value">Bs {totalBsCurrent.toFixed(2)}</div>
           </div>
 
           <div className="glass-panel stat-card">
             <div className="stat-header">
-              <span>Transacciones (Hoy)</span>
+              <span>Transacciones {latestJornada ? '(Última Jornada)' : '(Hoy)'}</span>
               <TrendingUp className="stat-icon" size={38} style={{ color: 'var(--warning)', background: 'rgba(245, 158, 11, 0.1)' }} />
             </div>
             <div className="stat-value">{totalTransactions}</div>
