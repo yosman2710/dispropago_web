@@ -2,16 +2,17 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { 
-  Settings, 
-  Percent, 
-  CheckCircle, 
-  AlertTriangle, 
+import {
+  Settings,
+  Percent,
+  CheckCircle,
+  AlertTriangle,
   HelpCircle,
-  ToggleLeft, 
+  ToggleLeft,
   ToggleRight,
   Database,
-  RefreshCw
+  RefreshCw,
+  DollarSign
 } from 'lucide-react';
 import styles from './page.module.css';
 
@@ -25,12 +26,13 @@ export default function ConfiguracionPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  
+
   // Settings state
   const [config, setConfig] = useState<DiscountConfig>({
     enabled: false,
     percentage: 5
   });
+  const [dollarRate, setDollarRate] = useState<number>(500.00);
 
   useEffect(() => {
     fetchSettings();
@@ -40,51 +42,62 @@ export default function ConfiguracionPage() {
     try {
       setLoading(true);
       setError(null);
-      
+
       const { data, error: fetchError } = await supabase
         .from('settings')
-        .select('*')
-        .eq('key', 'cash_usd_discount')
-        .single();
+        .select('*');
 
       if (fetchError) {
-        // Si la tabla no existe o la fila no existe
-        if (fetchError.code === 'PGRST116') {
-          // Fila no encontrada, intentamos insertarla
-          await initializeDefaultSettings();
+        throw fetchError;
+      }
+
+      if (data) {
+        // Descuento por efectivo
+        const discountRow = data.find(item => item.key === 'cash_usd_discount');
+        if (discountRow) {
+          const value = typeof discountRow.value === 'string' ? JSON.parse(discountRow.value) : discountRow.value;
+          setConfig({
+            enabled: value.enabled ?? false,
+            percentage: value.percentage ?? 5
+          });
         } else {
-          throw fetchError;
+          await initializeDefaultSettings('cash_usd_discount', { enabled: false, percentage: 5 });
         }
-      } else if (data) {
-        // En Supabase, el campo value se guarda como jsonb
-        const value = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
-        setConfig({
-          enabled: value.enabled ?? false,
-          percentage: value.percentage ?? 5
-        });
+
+        // Tasa del dólar
+        const rateRow = data.find(item => item.key === 'dollar_rate');
+        if (rateRow) {
+          const value = typeof rateRow.value === 'string' ? JSON.parse(rateRow.value) : rateRow.value;
+          setDollarRate(value.rate ?? 47.50);
+        } else {
+          await initializeDefaultSettings('dollar_rate', { rate: 47.50 });
+        }
       }
     } catch (err: any) {
       console.error('Error fetching settings:', err);
       setError(
-        err.message || 'No se pudo cargar la configuración de descuento.'
+        err.message || 'No se pudo cargar la configuración de descuento o la tasa del dólar.'
       );
     } finally {
       setLoading(false);
     }
   };
 
-  const initializeDefaultSettings = async () => {
+  const initializeDefaultSettings = async (key: string, defaultValue: any) => {
     try {
-      const defaultValue = { enabled: false, percentage: 5 };
       const { error: insertError } = await supabase
         .from('settings')
-        .insert([{ key: 'cash_usd_discount', value: defaultValue }]);
+        .insert([{ key, value: defaultValue }]);
 
       if (insertError) throw insertError;
-      
-      setConfig(defaultValue);
+
+      if (key === 'cash_usd_discount') {
+        setConfig(defaultValue);
+      } else if (key === 'dollar_rate') {
+        setDollarRate(defaultValue.rate);
+      }
     } catch (err: any) {
-      throw new Error('No se pudo inicializar la tabla de configuraciones. Asegúrese de haber creado la tabla "settings" en Supabase.');
+      throw new Error(`No se pudo inicializar la tabla de configuraciones para ${key}. Asegúrese de haber creado la tabla "settings" en Supabase.`);
     }
   };
 
@@ -94,13 +107,18 @@ export default function ConfiguracionPage() {
       alert('El porcentaje de descuento debe estar entre 0 y 100.');
       return;
     }
+    if (dollarRate <= 0) {
+      alert('La tasa de cambio del dólar debe ser mayor a 0.');
+      return;
+    }
 
     try {
       setSaving(true);
       setError(null);
       setSuccess(false);
 
-      const { error: updateError } = await supabase
+      // Guardar descuento
+      const { error: discountError } = await supabase
         .from('settings')
         .upsert({
           key: 'cash_usd_discount',
@@ -111,8 +129,21 @@ export default function ConfiguracionPage() {
           updated_at: new Date().toISOString()
         });
 
-      if (updateError) throw updateError;
-      
+      if (discountError) throw discountError;
+
+      // Guardar tasa
+      const { error: rateError } = await supabase
+        .from('settings')
+        .upsert({
+          key: 'dollar_rate',
+          value: {
+            rate: Number(dollarRate)
+          },
+          updated_at: new Date().toISOString()
+        });
+
+      if (rateError) throw rateError;
+
       setSuccess(true);
       setTimeout(() => setSuccess(false), 4000);
     } catch (err: any) {
@@ -135,21 +166,41 @@ CREATE POLICY "Allow write settings" ON public.settings FOR ALL USING (true);`;
 
   return (
     <div className="fade-in">
-      <header className="dashboard-header">
+      <header className="dashboard-header" style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h1>Configuración General</h1>
-          <p style={{ color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
-            Gestiona los parámetros globales de la aplicación y políticas de ventas de Dispropago.
+          <h1 style={{ fontSize: '1.8rem', fontWeight: 800 }}>Configuración</h1>
+          <p style={{ color: 'var(--text-secondary)', marginTop: '0.25rem', fontSize: '0.9rem' }}>
+            Ajustes globales y tasas del sistema.
           </p>
         </div>
+
+        {!loading && !error && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            {success && (
+              <div className={styles.successMessage}>
+                <CheckCircle size={16} />
+                <span>Guardado</span>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              form="settings-form"
+              disabled={saving}
+              className="btn-primary"
+            >
+              {saving ? 'Guardando...' : 'Guardar Ajustes'}
+            </button>
+          </div>
+        )}
       </header>
 
       <div className={styles.container}>
         {loading ? (
-          <div className="glass-panel skeleton" style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="glass-panel skeleton" style={{ height: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <div style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
               <RefreshCw className={styles.spinner} size={28} />
-              <p style={{ marginTop: '1rem' }}>Cargando parámetros globales...</p>
+              <p style={{ marginTop: '1rem', fontSize: '0.95rem' }}>Cargando parámetros globales...</p>
             </div>
           </div>
         ) : error ? (
@@ -159,10 +210,10 @@ CREATE POLICY "Allow write settings" ON public.settings FOR ALL USING (true);`;
               <h3>Error de Conexión o Configuración</h3>
             </div>
             <p className={styles.errorText}>
-              No se pudo interactuar con la tabla <code>settings</code> en Supabase. 
+              No se pudo interactuar con la tabla <code>settings</code> en Supabase.
               Si es la primera vez que inicia esta característica, es probable que deba crear la tabla en su panel de administración.
             </p>
-            
+
             <div className={styles.sqlInstructions}>
               <div className={styles.sqlHeader}>
                 <Database size={16} />
@@ -172,54 +223,69 @@ CREATE POLICY "Allow write settings" ON public.settings FOR ALL USING (true);`;
                 {sqlCreateQuery}
               </pre>
             </div>
-            
+
             <button onClick={fetchSettings} className="btn-primary" style={{ marginTop: '1.5rem' }}>
               <RefreshCw size={16} />
               <span>Reintentar Cargar</span>
             </button>
           </div>
         ) : (
-          <form onSubmit={handleSave} className="glass-panel" style={{ padding: '2rem' }}>
-            <div className={styles.sectionHeader}>
-              <Settings size={22} className={styles.iconPrimary} />
-              <h2>Descuento por Efectivo en Dólares ($ USD Cash)</h2>
-            </div>
-            
-            <p className={styles.sectionDescription}>
-              Esta opción permite aplicar de manera automática un porcentaje de descuento cuando los clientes realizan compras 
-              abonando **únicamente** con billetes de Dólares en Efectivo. No se aplicará el descuento si se combina con bolívares en efectivo, punto de venta, transferencias u otros métodos.
-            </p>
-
-            <div className={styles.formContent}>
-              {/* Toggle de Activación */}
-              <div className={styles.settingRow}>
-                <div className={styles.settingLabelGroup}>
-                  <span className={styles.settingTitle}>Activar descuento</span>
-                  <span className={styles.settingSubtitle}>Habilita o deshabilita la promoción en todas las tabletas de los cajeros.</span>
+          <form id="settings-form" onSubmit={handleSave} className={styles.formContainer}>
+            <div className={styles.grid}>
+              {/* TARJETA 1: TASA DEL DÓLAR */}
+              <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <div className={styles.iconWrapperBlue}>
+                    <DollarSign size={20} />
+                  </div>
+                  <div>
+                    <h3 style={{ fontSize: '1.1rem', fontWeight: 600 }}>Tasa de Cambio</h3>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Valor del dólar del día para conversión a Bs.</p>
+                  </div>
                 </div>
-                
-                <button 
-                  type="button"
-                  className={`${styles.toggleButton} ${config.enabled ? styles.toggleActive : ''}`}
-                  onClick={() => setConfig(prev => ({ ...prev, enabled: !prev.enabled }))}
-                >
-                  {config.enabled ? (
-                    <ToggleRight size={44} color="var(--accent)" />
-                  ) : (
-                    <ToggleLeft size={44} color="var(--text-secondary)" />
-                  )}
-                </button>
+
+                <div className={styles.inputCard}>
+                  <span className={styles.inputPrefix}>Bs</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={dollarRate}
+                    onChange={e => setDollarRate(Number(e.target.value))}
+                    className={styles.largeInput}
+                    placeholder="47.50"
+                  />
+                </div>
               </div>
 
-              {/* Input Porcentaje */}
-              <div className={`${styles.settingRow} ${!config.enabled ? styles.rowDisabled : ''}`}>
-                <div className={styles.settingLabelGroup}>
-                  <span className={styles.settingTitle}>Porcentaje de Descuento</span>
-                  <span className={styles.settingSubtitle}>Defina el porcentaje de reducción sobre el total de la orden.</span>
+              {/* TARJETA 2: DESCUENTO EN EFECTIVO */}
+              <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <div className={styles.iconWrapperGreen}>
+                      <Percent size={20} />
+                    </div>
+                    <div>
+                      <h3 style={{ fontSize: '1.1rem', fontWeight: 600 }}>Descuento Efectivo</h3>
+                      <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Aplica descuento al pagar solo en $ cash.</p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    className={styles.toggleButton}
+                    onClick={() => setConfig(prev => ({ ...prev, enabled: !prev.enabled }))}
+                  >
+                    {config.enabled ? (
+                      <ToggleRight size={38} color="var(--accent)" />
+                    ) : (
+                      <ToggleLeft size={38} color="var(--text-secondary)" />
+                    )}
+                  </button>
                 </div>
 
-                <div className={styles.inputWrapper}>
-                  <Percent size={18} className={styles.inputIcon} />
+                <div className={`${styles.inputCard} ${!config.enabled ? styles.disabled : ''}`}>
+                  <span className={styles.inputPrefix}>%</span>
                   <input
                     type="number"
                     min="0"
@@ -228,44 +294,19 @@ CREATE POLICY "Allow write settings" ON public.settings FOR ALL USING (true);`;
                     disabled={!config.enabled}
                     value={config.percentage}
                     onChange={e => setConfig(prev => ({ ...prev, percentage: Number(e.target.value) }))}
-                    className={styles.percentInput}
+                    className={styles.largeInput}
                     placeholder="5.0"
                   />
                 </div>
               </div>
             </div>
 
-            {/* Panel Informativo */}
+            {/* BANNER INFORMATIVO COMPACTO */}
             <div className={styles.infoBox}>
-              <HelpCircle size={20} color="var(--primary)" />
-              <div>
-                <h4>¿Cómo funciona en la tableta del Cajero?</h4>
-                <p>
-                  Cuando el descuento esté **Habilitado**, la pantalla de pago de la aplicación detectará de forma automática 
-                  si los campos de <em>Efectivo Bs</em>, <em>Punto de Venta</em> y <em>Transferencia</em> están en cero. 
-                  En ese instante, si el cajero introduce dinero únicamente en la sección <em>Efectivo $</em> (Dólares), 
-                  se le cobrará al cliente el total de la orden con el {config.percentage}% de descuento ya deducido.
-                </p>
-              </div>
-            </div>
-
-            {/* Botón Guardar / Success */}
-            <div className={styles.formActions}>
-              {success && (
-                <div className={styles.successMessage}>
-                  <CheckCircle size={18} />
-                  <span>Configuración guardada y sincronizada correctamente.</span>
-                </div>
-              )}
-              
-              <button 
-                type="submit" 
-                disabled={saving} 
-                className="btn-primary"
-                style={{ marginLeft: 'auto' }}
-              >
-                {saving ? 'Guardando...' : 'Guardar Configuración'}
-              </button>
+              <HelpCircle size={16} color="var(--primary)" style={{ flexShrink: 0, marginTop: '2px' }} />
+              <p>
+                El descuento por efectivo se calcula automáticamente cuando el cajero registra el pago utilizando únicamente dólares en efectivo.
+              </p>
             </div>
           </form>
         )}
