@@ -11,7 +11,7 @@ export default function CajerosPage() {
   const [activeCaja, setActiveCaja] = useState<string>('Caja 1');
 
   // Nombres de cajas a listar en las pestañas
-  const cajas = ['Caja 1', 'Caja 2', 'Caja 3', 'Caja 4', 'Caja 5', 'Caja 6'];
+  const cajas = ['Caja 1', 'Caja 2', 'Caja 3', 'Caja 4', 'Caja 5', 'Caja 6', 'Caja 7', 'Caja 8'];
 
   useEffect(() => {
     fetchSales();
