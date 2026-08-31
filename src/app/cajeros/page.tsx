@@ -16,7 +16,7 @@ export default function CajerosPage() {
   useEffect(() => {
     fetchSales();
   }, []);
-
+//hola
   const fetchSales = async () => {
     try {
       setLoading(true);
